@@ -1,0 +1,392 @@
+---
+title: "STAT 5104 HW 7"
+author: "Samantha Sunshine"
+date: "10/25/17"
+output: html_notebook
+---
+
+```{r, echo = FALSE}
+library(foreach)
+library(doParallel)
+library(doRNG)
+library(parallel)
+```
+
+# Problem 2
+
+```{r, echo = FALSE}
+set.seed(12345)
+y <- rnorm(n = 1000, mean = 1, sd = 1)
+
+
+#for loop to calculate the sum of squares total for y
+ybar <- as.vector(mean(y))
+z <- 0
+time_ssa <- system.time({
+  for(i in 1:length(y)){
+    z <- z + (y[i] - ybar)^2
+  }
+})
+
+#vectors to calculate the sum of squares total for y
+ssy <- sum((y-ybar)^2)
+w <- 0
+time_ssb <- system.time({
+  w <- t(y-ybar) %*% (y-ybar)
+})
+
+#dopar to calculate the sum of squares total for y
+cl_1 <- makeCluster(3)
+registerDoParallel(cl_1)
+time_ssc <- system.time({
+  ss_dopar <- foreach(i=1:length(y), .combine = "+") %dopar% {
+    sum((y[i] - ybar)^2)
+  }
+})
+stopCluster(cl_1)
+
+#parSapply to calculate the sum of squares total for y
+ss_sap <- function(){
+  sum((y - ybar)^2)
+}
+cl_0 <- makeCluster(3)
+clusterExport(cl_0, "ss_sap")
+time_ssd <- system.time({
+  parSapply(cl_0, 1:length(y), function(y) ss_sap())
+})
+stopCluster(cl_0)
+```
+
+(a) The for loop calculated a sum of squared error of `r z`.  
+
+(b) The vector multiplication calculated a sum of squared error of `r w`.  
+
+(c) The dopar function calculated a sum of squared error of `r ss_dopar`. I set the parameter in the foreach loop where i=1:length(y), and ybar was the mean of y. I also used the .combine function to add everything in my loop.  
+
+(d) Unfortunately, I kept receiving an error from the parSapply function and could not get my code to run properly.  
+
+$~$  
+
+Table 1: Sum of Squared Error  
+
+```{r, echo = FALSE}
+#table of sums of squared error
+sse <- data.frame(z, w, ss_dopar, 0)
+round_sse <- round(sse, digits = 4)
+rownames(round_sse) <- "SSE"
+knitr::kable(round_sse, col.names = c("Part A: for loop", "Part B: vectors", "Part C: dopar", "Part D: parSapply"))
+```
+
+In the table of solutions, I entered a zero in the last column for Part D where my parSapply function did not work. From the other solutions, we can see that each different method worked in the same way, producing the exact same result.  
+
+$~$  
+Table 2: Times for Sum of Squared Error  
+```{r, echo = FALSE}
+#table of times for sums of squared error
+time_table1 <- rbind(c(0.02, 0.00, 0.01), c(0.00, 0.00, 0.00), c(0.46, 0.07, 0.67), c(0, 0, 0))
+rownames(time_table1) <- c("Part A", "Part B", "Part C", "Part D")
+knitr::kable(time_table1, col.names = c("user", "system", "elapsed"))
+```
+
+In the table of system times, I entered all zeros into the last row since my parSapply did not work properly. However, the zeros in the row for Part B were the actual readings from the system.time function. I even ran the system time multiple times and it still came up with the same times. We can see from the times that the vector multiplication was the fastest, followed by the for loop, and finally the dopar function.  
+
+# Problem 3
+
+```{r echo=F}
+#generate the data
+set.seed(1256)
+theta <- as.matrix(c(1,2), nrow =2)
+X <- cbind(1, rep(1:10,10))
+h <- X %*% theta + rnorm(100,0,0.2)
+
+#new and current thetas pre-allocated, choosing values for alpha, tolerance (t), and m as length of h
+theta_current <- as.matrix(c(0,0), nrow =2)
+theta_new <- as.matrix(c(1,1), nrow =2)
+alpha <- 0.0001
+t <- 0.000001
+m <- length(h)
+
+#gradient descent
+tX <- t(X)
+t5 <- system.time({
+while(sum(abs(theta_new-theta_current)>t)){
+  theta_current <- theta_new
+  theta_grad <- tX %*% ((X %*% theta_current) - h)
+  theta_new <- theta_current - alpha/m * theta_grad
+  }
+})
+
+#parallelized gradient descent
+grad_des <- function(){
+  theta_current <- theta_new
+  theta_grad <- tX %*% ((X %*% theta_current) - h)
+  theta_new <- theta_current - alpha/m * theta_grad
+}
+cl_3 <- makeCluster(3)
+clusterExport(cl_3, "grad_des")
+time_gd <- system.time({
+  par_theta <- parSapply(cl_3, 1:m, function(x) grad_des())
+})
+stopCluster(cl_3)
+
+#linear model of original gradient descent
+lmgrad <- coef(lm(h~0+X))
+```
+
+For the gradient descent, I used the parSapply function so that I could create a function of x that replicated the algorithm from the previous gradient descent problem. I named my function grad_des, and I used this function inside parSapply. I made a cluster and exported the cluster before the parSapply function, and I stopped the cluster following the function. The results from the gradiant descent are below, along with the coefficients from the linear model function.
+
+Table 3: Gradient Descent Values  
+```{r, echo = FALSE}
+#table of gradient descent values
+theta_new <- data.frame(theta_new[1,], theta_new[2,])
+colnames(theta_new) <- c("theta_0", "theta_1")
+knitr::kable(theta_new)
+```
+
+Table 4: Coefficients of Linear Model  
+```{r, echo=FALSE}
+#lm coefficients
+lmgrad <- data.frame(lmgrad[1,], lmgrad[2,])
+knitr::kable(lmgrad, col.names = c("beta_0", "beta_1"))
+```
+
+As you can see in Tables 3 and 4, the coefficients using both methods are very similar. The y-intercept vales are both very close to one, separated from one another by approximately 0.03. The slope values are both very close to two, and they are separated from one another by approximately 0.002.  
+
+# Problem 4
+
+```{r, echo = FALSE}
+#generating data
+set.seed(1267)
+n <- 200
+X <- 1/cbind(1, rt(n, df = 1), rt(n, df = 1), rt(n, df = 1))
+beta <- c(1, 2, 3, 0)
+Y <- X %*% beta + rnorm(100, sd = 3)
+
+#Bootstrap method
+B <- 10000
+bootbeta <- matrix(0, nrow=B, ncol=5)
+bootid <- matrix(0, nrow=B, ncol=length(beta))
+time_boot1 <- system.time({
+  for(i in 1:B){
+    bootid <- sample(1:n, n, replace = T)
+    boot_x <- X[bootid,1:4]
+    boot_y <- Y[bootid, 1]
+    bootbeta[i,] <- coef(lm(boot_y~boot_x))
+  }
+})
+
+#parallelizing bootstrap
+cl_2 <- makeCluster(3)
+registerDoParallel(cl_2)
+time_boot2 <- system.time({
+  foreach(i=1:B) %dopar% {
+    bootid <- sample(1:n, n, replace = T)
+    boot_x <- X[bootid,1:4]
+    boot_y <- Y[bootid, 1]
+    bootbeta[i,] <- coef(lm(boot_y~boot_x))
+  }
+})
+stopCluster(cl_2)
+```
+
+(a) Algorithm for Bootstrap  
+
+Using the bootstrap method for calculating $\hat{\beta}$ begins by pre-allocating a matrix for all $\hat{\beta}$ after being run for B=10,000 times. I also pre-allocated a matrix for the indexing of $\hat{\beta}$. The for loop sampled 200 numbers from X, and generated a new set of coefficients for the new x and y datasets.    
+
+For the parallelization, I used the dopar function along with a foreach loop instead of the original for loop. The rest of the copmutation was the same, except for adding a cluster and registering doParallel before the loop, as well as stopping the cluster after the loop.  
+
+(b) Tables of Results   
+$~$  
+
+Table 5: Linear Model Coefficients from Bootstrap (only rows 1 through 20)   
+```{r, echo = FALSE}
+#table of bootstrap results
+knitr::kable(bootbeta[1:20, -2], caption = "Linear Model Coefficients from Bootstrap", col.names = c("Beta_1", "Beta_2", "Beta_3", "Beta_0"))
+```
+
+Table 6: Summary of Linear Model Coefficients from Bootstrap   
+```{r, echo = FALSE}
+#bootstrap results summary
+knitr::kable(summary(bootbeta[, -2]), caption = "Summary of Linear Model Coefficients from Bootstrap", col.names = c("Beta_1", "Beta_2", "Beta_3", "Beta_0"))
+```
+
+The times of the original bootstrap method and the parallelized bootstrap method are very similar. A table of the times is shown below. The parallel time actually showed a longer elapsed time than the original bootstrap method.   
+$~$  
+
+Table 7: System Time from Bootstrap Methods  
+```{r, echo = FALSE}
+#table of bootstrap times
+time_table2 <- rbind(c(9.14, 0.00, 9.17), c(3.61, 0.71, 9.46))
+rownames(time_table2) <- c("Original", "Parallel")
+knitr::kable(time_table2, col.names = c("user", "system", "elapsed"))
+```
+
+
+(c) Histograms of $\hat{\beta}$  
+
+```{r, echo = FALSE}
+#histograms of beta values from bootstrap
+par(mfrow = c(2, 2))
+hist(bootbeta[, 1], xlab = "Beta_1", main = "Figure 1: Histogram of Beta_1")
+hist(bootbeta[, 3], xlab = "Beta_2", main = "Figure 2: Histogram of Beta_2")
+hist(bootbeta[, 4], xlab = "Beta_3", main = "Figure 3: Histogram of Beta_3")
+hist(bootbeta[, 5], xlab = "Beta_0", main = "Figure 4: Histogram of Beta_0")
+```
+
+In Figure 1, we can see that the $\beta_1$ values appear to follow some type of normal distribution because of the bell-shaped curve. Figures 2, 3, and 4 all have similar shapes, but do not resemble the normal distribution quite as well as Figure 1.  $\beta_3$ appears to have the highest mean around 3, while $\beta_0$ has the lowest mean around 0. 
+
+# Appendix
+
+```{r, echo=TRUE, eval=FALSE}
+set.seed(12345)
+y <- rnorm(n = 1000, mean = 1, sd = 1)
+
+
+#for loop to calculate the sum of squares total for y
+ybar <- as.vector(mean(y))
+z <- 0
+time_ssa <- system.time({
+  for(i in 1:length(y)){
+    z <- z + (y[i] - ybar)^2
+  }
+})
+
+#vectors to calculate the sum of squares total for y
+ssy <- sum((y-ybar)^2)
+w <- 0
+time_ssb <- system.time({
+  w <- t(y-ybar) %*% (y-ybar)
+})
+
+#dopar to calculate the sum of squares total for y
+cl_1 <- makeCluster(3)
+registerDoParallel(cl_1)
+time_ssc <- system.time({
+  ss_dopar <- foreach(i=1:length(y), .combine = "+") %dopar% {
+    sum((y[i] - ybar)^2)
+  }
+})
+stopCluster(cl_1)
+
+#parSapply to calculate the sum of squares total for y
+ss_sap <- function(){
+  sum((y - ybar)^2)
+}
+cl_0 <- makeCluster(3)
+clusterExport(cl_0, "ss_sap")
+time_ssd <- system.time({
+  parSapply(cl_0, 1:length(y), function(y) ss_sap())
+})
+stopCluster(cl_0)
+
+#table of sums of squared error
+sse <- data.frame(z, w, ss_dopar, 0)
+round_sse <- round(sse, digits = 4)
+rownames(round_sse) <- "SSE"
+knitr::kable(round_sse, col.names = c("Part A: for loop", "Part B: vectors", "Part C: dopar", "Part D: parSapply"))
+
+#table of times for sums of squared error
+time_table1 <- rbind(c(0.02, 0.00, 0.01), c(0.00, 0.00, 0.00), c(0.46, 0.07, 0.67), c(0, 0, 0))
+rownames(time_table1) <- c("Part A", "Part B", "Part C", "Part D")
+knitr::kable(time_table1, col.names = c("user", "system", "elapsed"))
+
+#generate the data
+set.seed(1256)
+theta <- as.matrix(c(1,2), nrow =2)
+X <- cbind(1, rep(1:10,10))
+h <- X %*% theta + rnorm(100,0,0.2)
+
+#new and current thetas pre-allocated, choosing values for alpha, tolerance (t), and m as length of h
+theta_current <- as.matrix(c(0,0), nrow =2)
+theta_new <- as.matrix(c(1,1), nrow =2)
+alpha <- 0.0001
+t <- 0.000001
+m <- length(h)
+
+#gradient descent
+tX <- t(X)
+t5 <- system.time({
+while(sum(abs(theta_new-theta_current)>t)){
+  theta_current <- theta_new
+  theta_grad <- tX %*% ((X %*% theta_current) - h)
+  theta_new <- theta_current - alpha/m * theta_grad
+  }
+})
+
+#parallelized gradient descent
+grad_des <- function(){
+  theta_current <- theta_new
+  theta_grad <- tX %*% ((X %*% theta_current) - h)
+  theta_new <- theta_current - alpha/m * theta_grad
+}
+cl_3 <- makeCluster(3)
+clusterExport(cl_3, "grad_des")
+time_gd <- system.time({
+  par_theta <- parSapply(cl_3, 1:m, function(x) grad_des())
+})
+stopCluster(cl_3)
+
+#linear model of original gradient descent
+lmgrad <- coef(lm(h~0+X))
+
+#table of gradient descent values
+theta_new <- data.frame(theta_new[1,], theta_new[2,])
+colnames(theta_new) <- c("theta_0", "theta_1")
+knitr::kable(theta_new)
+
+#lm coefficients
+lmgrad <- data.frame(lmgrad[1,], lmgrad[2,])
+knitr::kable(lmgrad, col.names = c("beta_0", "beta_1"))
+
+#generating data
+set.seed(1267)
+n <- 200
+X <- 1/cbind(1, rt(n, df = 1), rt(n, df = 1), rt(n, df = 1))
+beta <- c(1, 2, 3, 0)
+Y <- X %*% beta + rnorm(100, sd = 3)
+
+#Bootstrap method
+B <- 10000
+bootbeta <- matrix(0, nrow=B, ncol=5)
+bootid <- matrix(0, nrow=B, ncol=length(beta))
+time_boot1 <- system.time({
+  for(i in 1:B){
+    bootid <- sample(1:n, n, replace = T)
+    boot_x <- X[bootid,1:4]
+    boot_y <- Y[bootid, 1]
+    bootbeta[i,] <- coef(lm(boot_y~boot_x))
+  }
+})
+
+#parallelizing bootstrap
+cl_2 <- makeCluster(3)
+registerDoParallel(cl_2)
+time_boot2 <- system.time({
+  foreach(i=1:B) %dopar% {
+    bootid <- sample(1:n, n, replace = T)
+    boot_x <- X[bootid,1:4]
+    boot_y <- Y[bootid, 1]
+    bootbeta[i,] <- coef(lm(boot_y~boot_x))
+  }
+})
+stopCluster(cl_2)
+
+#table of bootstrap results
+knitr::kable(bootbeta[1:20, -2], caption = "Linear Model Coefficients from Bootstrap", col.names = c("Beta_1", "Beta_2", "Beta_3", "Beta_0"))
+
+#bootstrap results summary
+knitr::kable(summary(bootbeta[, -2]), caption = "Summary of Linear Model Coefficients from Bootstrap", col.names = c("Beta_1", "Beta_2", "Beta_3", "Beta_0"))
+
+#table of bootstrap times
+time_table2 <- rbind(c(9.14, 0.00, 9.17), c(3.61, 0.71, 9.46))
+rownames(time_table2) <- c("Original", "Parallel")
+knitr::kable(time_table2, col.names = c("user", "system", "elapsed"))
+
+#histograms of beta values from bootstrap
+par(mfrow = c(2, 2))
+hist(bootbeta[, 1], xlab = "Beta_1", main = "Figure 1: Histogram of Beta_1")
+hist(bootbeta[, 3], xlab = "Beta_2", main = "Figure 2: Histogram of Beta_2")
+hist(bootbeta[, 4], xlab = "Beta_3", main = "Figure 3: Histogram of Beta_3")
+hist(bootbeta[, 5], xlab = "Beta_0", main = "Figure 4: Histogram of Beta_0")
+```
+
