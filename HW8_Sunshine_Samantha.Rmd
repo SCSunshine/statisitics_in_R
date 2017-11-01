@@ -19,7 +19,7 @@ library(scales)
 
 # Problem 2
 
-```{r, echo = FALSE}
+```{r survey_data, echo = FALSE}
 #class survey data in a table
 class_table <- read.table("C:/Users/ssuns/Documents/2017 Fall/Statistical Programming/STAT_5014_Homework/08_text_mining_Rnotebooks_bash_sed_awk/survey_data.txt", sep = "\t", header = T)
 
@@ -123,21 +123,21 @@ The frequency of each word is also displayed in the bar graph in Figure 2. The w
 
 $~$  
 Table 1: Class Survey Data   
-```{r, echo = FALSE}
+```{r table_1, echo = FALSE}
 #table of class data
 knitr::kable(class_table, caption = "Class Survey Data")
 ```
 
 $~$  
 Table 2: Class Survey Data Frequencies by Category  
-```{r, echo = FALSE}
+```{r table_2, echo = FALSE}
 #table of word frequency by category
 knitr::kable(class_all, caption = "Class Survey Data Frequencies by Category")
 ```
 
 $~$  
 Figure 1: Word Cloud  
-```{r,echo = FALSE}
+```{r figure_1,echo = FALSE}
 #wordcloud
 class_tidy %>%
   with(wordcloud(word, n, min.freq = 1, max.words = 27, col = rainbow(10)))
@@ -148,7 +148,7 @@ class_tidy %>% mutate(word = reorder(word, n)) %>% ggplot(aes(word, n)) + geom_c
 
 # Problem 3
 
-```{r, echo=FALSE}
+```{r twitter_data, echo=FALSE}
 #reading in data
 twitter <- read.csv("C:/Users/ssuns/Documents/2017 Fall/Statistical Programming/statisitics_in_R/twitter_data.csv")
 time_twitter <- mutate(twitter, person = "Samantha") %>%
@@ -180,7 +180,7 @@ I used my own Twitter account data and used a text mining process similar to tha
 
 Next I removed unwanted characters, links, and retweets so I could narrow the text down to just my own typed words. This code I used from the case study, except for one person, not two. Then I counted the frequency of the data, which I did differently than the case study. The case study calculated the probability of a word occurring by dividing the number of times that word occurred by the total number of words. I simply left it as the number of times each word occurred. I think that is an easier way to see how often each word occurs. You can see the frequency of the top 20 words in Table 3. I used the frequency data to make a word cloud, Figure 4. There is also a barchart of the frequencies, Figure 5, but again only of the top 20 words.  
 
-```{r, echo = FALSE}
+```{r timestamp, echo = FALSE}
 #plot of timestamp
 ggplot(time_twitter, aes(x = timestamp, fill = person)) +
   geom_histogram(position = "identity", bins = 20, show.legend = FALSE) +
@@ -189,14 +189,14 @@ ggplot(time_twitter, aes(x = timestamp, fill = person)) +
 
 $~$  
 Table 3: Twitter Word Frequencies  
-```{r, echo = FALSE}
+```{r table_3, echo = FALSE}
 #table of frequencies (top 20)
 knitr::kable(freq_table, caption = "Twitter Word Frequencies")
 ```
 
 $~$  
 Figure 4: Word Cloud  
-```{r, echo = FALSE}
+```{r figure_4, echo = FALSE}
 #word cloud
 frequency %>%
   with(wordcloud(word, Samantha, min.freq = 2, max.words = 90, col = rainbow(10)))
@@ -205,3 +205,8 @@ frequency %>%
 freq_table %>% mutate(word = reorder(word, Samantha)) %>% ggplot(aes(word, Samantha)) + geom_col() + xlab(NULL) + coord_flip()+ ggtitle("Figure 5: Twitter Word Frequency Bars")
 ```
 
+# Appendix
+
+```{r Appendix, ref.label = c("survey_data", "table_1", "table_2", "figure_1", "twitter_data", "timestamp", "table_3", "figure_4"), echo=T, eval=F, tidy=TRUE, include=T}
+  
+```
