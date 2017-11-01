@@ -1,0 +1,207 @@
+---
+title: "STAT 5014 HW 8"
+author: "Samantha Sunshine"
+date: "11/1/17"
+output: html_notebook
+---
+
+```{r, echo = FALSE}
+library(tidyr)
+library(dplyr)
+library(tidytext)
+library(stringr)
+library(wordcloud)
+library(ggplot2)
+library(lubridate)
+library(readr)
+library(scales)
+```
+
+# Problem 2
+
+```{r, echo = FALSE}
+#class survey data in a table
+class_table <- read.table("C:/Users/ssuns/Documents/2017 Fall/Statistical Programming/STAT_5014_Homework/08_text_mining_Rnotebooks_bash_sed_awk/survey_data.txt", sep = "\t", header = T)
+
+#text mining
+class_text <- c("Math-BS",	"PC",	"beginner",	"none", 
+    "Math-BS",	"Mac", "beginner", "none (just some SAS and MATLAB)", 
+    "Finance-BS, Finance-MS",	"PC",	"Int",	"Matlab, SAS, some SQL", 
+    "Math(Stat)-BS", "PC", "intermediate", "minitab, SAS, Python", 
+    "Math(Stat)-BS", "PC", "Intermediate", "Minitab, SAS, Python, SQL, C++, R, SPSS", 
+    "Math, History", "PC-Surface", "beginner", "Obj-C", 
+    "Math",	"PC",	"beginner",	"none", 
+    "Econ, Math",	"PC",	"beginner",	"Java", 
+    "Econ/Stat", "Mac",	"intermediate",	"Python,SAS", 
+    "Econ/Math/STAT",	"PC",	"Intermediate",	"NONE (teeny amount of SAS)", 
+    "DAAS",	"PC",	"beg/intermed",	"some SAS", 
+    "Finance Engineer BS STAT-Master", "MAC",	"Intermed", "python/matlab/java/Linux/C++", 
+    "mechanical Eng", "PC", "beg/intermediate",	"matlab/java/C++", 
+    "Math/Stat", "PC", "int", "Matlab/Java/SAS/python")
+#getting rid of all punctuation and changing to lowercase
+class_text_tidy <- str_replace_all(class_text, "Obj-C", "objc") %>%
+  str_replace_all("[[:punct:]]", " ") %>%
+  str_replace_all("ermediate", "") %>%
+  str_replace_all("ermed", "") %>%
+  str_replace_all("inner", "") %>%
+  str_replace_all("aster", "s") %>%
+  str_replace_all("ineer", "") %>%
+  tolower()
+#breaking strings into individual words, counting frequency of each word
+class_tidy <- data_frame(line = 1:56, text = class_text_tidy) %>%
+  unnest_tokens(word, text) %>%
+  count(word, sort = TRUE)
+#removing irrelevant words
+class_tidy <- class_tidy[-c(16, 21, 22, 25, 29, 30, 33),]
+
+#class survey data by major
+class_major <- class_table[,1]
+#getting rid of all punctuation and changing to lowercase
+class_major_tidy <- str_replace_all(class_major, "[[:punct:]]", " ") %>%
+  str_replace_all("aster", "s") %>%
+  str_replace_all("ineer", "") %>%
+  tolower()
+#breaking strings into individual words, counting frequency of each word
+major_tidy <- data_frame(line = 1:14, text = class_major_tidy) %>%
+  unnest_tokens(word, text) %>%
+  count(word, sort = TRUE)
+na1 <- data_frame(word = rep(" ", 1), n = rep(" ", 1))
+major_tidy <- rbind(major_tidy, na1)
+
+#class survey data by platform
+class_platform <- class_table[,2]
+#getting rid of all punctuation and changing to lowercase
+class_platform_tidy <- str_replace_all(class_platform, "[[:punct:]]", "") %>%
+  tolower()
+#breaking strings into individual words, counting frequency of each word
+platform_tidy <- data_frame(line = 1:14, text = class_platform_tidy) %>%
+  unnest_tokens(word, text) %>%
+  count(word, sort = TRUE)
+na8 <- data_frame(word = rep(" ", 8), n = rep(" ", 8))
+platform_tidy <- rbind(platform_tidy, na8)
+
+#class survey data by R level
+class_rlevel <- class_table[,3]
+#getting rid of all punctuation and changing to lowercase
+class_rlevel_tidy <- str_replace_all(class_rlevel, "[[:punct:]]", "") %>%
+  str_replace_all("ermediate", "") %>%
+  str_replace_all("ermed", "") %>%
+  str_replace_all("inner", "") %>%
+  tolower()
+#breaking strings into individual words, counting frequency of each word
+rlevel_tidy <- data_frame(line = 1:14, text = class_rlevel_tidy) %>%
+  unnest_tokens(word, text) %>%
+  count(word, sort = TRUE)
+rlevel_tidy <- rbind(rlevel_tidy, na8)
+
+#class survey data by other programming
+class_other <- class_table[,4]
+#getting rid of all punctuation and changing to lowercase
+class_other_tidy <- str_replace_all(class_other, "-", "") %>%
+  str_replace_all("[[:punct:]]", " ") %>%
+  tolower()
+#breaking strings into individual words, counting frequency of each word
+other_tidy <- data_frame(line = 1:14, text = class_other_tidy) %>%
+  unnest_tokens(word, text) %>%
+  count(word, sort = TRUE)
+#taking out irrelevant words
+other_tidy <- other_tidy[-c(7, 10, 11, 12, 15, 16, 18),]
+
+#data frame of all categories together
+class_all <- cbind(major_tidy, platform_tidy, rlevel_tidy, other_tidy)
+colnames(class_all) <- c("Major", "frequency", "Platform", "frequency", "R Level", "frequency", "Other Programming", "frequency")
+```
+
+After surveying the class about their previous majors, computer platform, level of R programming experience, and any other programming experience, we have found the frequency of each answer provided by the class. As we can see from Table 2, the most frequently occurring word in the survey data is "pc", followed by "math". This means that a lot of the class uses a PC platform and the majority of the class came from a math background. Let's take a look at the breakdown for each category. For everyone's previous major, nine people have a math background. Six students have a statistical background, three studied economics, three from finance, two from engineering, one history major, and one daas student. There were only 14 students in the survey, so some students previously studied multiple topics. Although everyone in the survey had completed a Bachelor's degree, only six students listed this on the survey. Two students previously completed a master's degree.  
+
+Moving on to the platform category, ten students use a PC platform, not including the one PC-Surface, while only three students use a Mac Platform.  
+As far as students' levels of R programming experience, seven claimed to be on an intermediate level, two wrote beginner/intermediate, and five stated they were beginners.  
+
+The last category was other programming experience. The most common other program that students previously learned was SAS, and eight students listed this program. Matlab and python both were listed five times, four students knew java, three people listed C++, and Minitab and sql were both listed twice. Linux, ObjC, and spss were all listed by students only once, and four students said they had no prior programming experience.  
+
+The frequency of each word is also displayed in the bar graph in Figure 2. The word cloud shows the frequency of each word as well, shown in Figure 1. The words in the largest font size occur most frequently and the words in the smallest font size occur less frequently. They are also color coded, with the least frequent words in red, and the rest of the words working their way through the rainbow palette until they reach the most frequent words in pink.  
+
+$~$  
+Table 1: Class Survey Data   
+```{r, echo = FALSE}
+#table of class data
+knitr::kable(class_table, caption = "Class Survey Data")
+```
+
+$~$  
+Table 2: Class Survey Data Frequencies by Category  
+```{r, echo = FALSE}
+#table of word frequency by category
+knitr::kable(class_all, caption = "Class Survey Data Frequencies by Category")
+```
+
+$~$  
+Figure 1: Word Cloud  
+```{r,echo = FALSE}
+#wordcloud
+class_tidy %>%
+  with(wordcloud(word, n, min.freq = 1, max.words = 27, col = rainbow(10)))
+
+#frequency bars
+class_tidy %>% mutate(word = reorder(word, n)) %>% ggplot(aes(word, n)) + geom_col() + xlab(NULL) + coord_flip() +ggtitle("Figure 2: Class Survey Data Frequency Bars")
+```
+
+# Problem 3
+
+```{r, echo=FALSE}
+#reading in data
+twitter <- read.csv("C:/Users/ssuns/Documents/2017 Fall/Statistical Programming/statisitics_in_R/twitter_data.csv")
+time_twitter <- mutate(twitter, person = "Samantha") %>%
+  mutate(timestamp = ymd_hms(timestamp))
+
+#removing retweets, links, and characters
+replace_reg <- "https://t.co/[A-Za-z\\d]+|http://[A-Za-z\\d]+|&amp;|&lt;|&gt;|RT|https"
+unnest_reg <- "([^A-Za-z_\\d#@']|'(?![A-Za-z_\\d#@]))"
+tidy_twitter <- time_twitter %>% 
+  filter(!str_detect(text, "^RT")) %>%
+  mutate(text = str_replace_all(text, replace_reg, "")) %>%
+  unnest_tokens(word, text, token = "regex", pattern = unnest_reg) %>%
+  filter(!word %in% stop_words$word,
+         str_detect(word, "[a-z]"))
+
+#word frequencies
+frequency <- tidy_twitter %>% 
+  group_by(person) %>%
+  count(word, sort = TRUE)
+frequency <- frequency %>% 
+  select(person, word, n) %>% 
+  spread(person, n) %>%
+  arrange(desc(Samantha))
+frequency <- frequency[-c(1, 4:7, 9, 13, 18, 20, 23, 28, 37, 45:47, 62:66, 114:132),]
+freq_table <- frequency[1:20,]
+```
+
+I used my own Twitter account data and used a text mining process similar to that of the case study about Twitter archives from "Text Mining With R". Since I only used my account, I did not compare my data with anyone else's. First I read in the data, and then created a time stamp barchart (Figure 3) to show how frequently I have used twitter since having my account. There was a big spike around the end of 2013 and the beginning of 2014, but I have hardly used the account since 2015.  
+
+Next I removed unwanted characters, links, and retweets so I could narrow the text down to just my own typed words. This code I used from the case study, except for one person, not two. Then I counted the frequency of the data, which I did differently than the case study. The case study calculated the probability of a word occurring by dividing the number of times that word occurred by the total number of words. I simply left it as the number of times each word occurred. I think that is an easier way to see how often each word occurs. You can see the frequency of the top 20 words in Table 3. I used the frequency data to make a word cloud, Figure 4. There is also a barchart of the frequencies, Figure 5, but again only of the top 20 words.  
+
+```{r, echo = FALSE}
+#plot of timestamp
+ggplot(time_twitter, aes(x = timestamp, fill = person)) +
+  geom_histogram(position = "identity", bins = 20, show.legend = FALSE) +
+  facet_wrap(~person, ncol = 1) + ggtitle("Figure 3: Twitter Timestamp")
+```
+
+$~$  
+Table 3: Twitter Word Frequencies  
+```{r, echo = FALSE}
+#table of frequencies (top 20)
+knitr::kable(freq_table, caption = "Twitter Word Frequencies")
+```
+
+$~$  
+Figure 4: Word Cloud  
+```{r, echo = FALSE}
+#word cloud
+frequency %>%
+  with(wordcloud(word, Samantha, min.freq = 2, max.words = 90, col = rainbow(10)))
+
+#frequency bar chart (top 20)
+freq_table %>% mutate(word = reorder(word, Samantha)) %>% ggplot(aes(word, Samantha)) + geom_col() + xlab(NULL) + coord_flip()+ ggtitle("Figure 5: Twitter Word Frequency Bars")
+```
+
