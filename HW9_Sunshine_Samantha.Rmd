@@ -1,0 +1,118 @@
+---
+title: "STAT 5014 HW 9"
+author: "Samantha Sunshine"
+date: "11/8/17"
+output: html_notebook
+---
+
+```{python, echo = FALSE}
+import numpy as np
+from PIL import Image
+from os import path
+import matplotlib.pyplot as plt
+import random
+
+from wordcloud import WordCloud, STOPWORDS
+
+def grey_color_func(word, font_size, position, orientation, random_state=None,
+                    **kwargs):
+    return "hsl(0, 0%%, %d%%)" % random.randint(60, 100)
+
+
+#read the mask image
+#taken from
+#http://www.stencilry.org/stencils/movies/star%20wars/storm-trooper.gif
+mask = np.array(Image.open("stormtrooper_mask.png"))
+
+#movie script of "a new hope"
+#http://www.imsdb.com/scripts/Star-Wars-A-New-Hope.html
+#May the lawyers deem this fair use.
+text = open('a_new_hope.txt').read()
+
+#preprocessing the text a little bit
+text = text.replace("HAN", "Han")
+text = text.replace("LUKE'S", "Luke")
+
+#adding movie script specific stopwords
+stopwords = set(STOPWORDS)
+stopwords.add("int")
+stopwords.add("ext")
+
+wc = WordCloud(max_words=1000, mask=mask, stopwords=stopwords, margin=10,
+               random_state=1).generate(text)
+
+#store default colored image
+default_colors = wc.to_array()
+plt.title("Custom colors")
+plt.imshow(wc.recolor(color_func=grey_color_func, random_state=3),
+           interpolation="bilinear")
+wc.to_file("a_new_hope.png")
+plt.axis("off")
+plt.figure()
+plt.title("Default colors")
+plt.imshow(default_colors, interpolation="bilinear")
+plt.axis("off")
+plt.show()
+```
+
+The code used in the creation of the following word clouds was slightly altered from amueller's github account, which can be found at the https://github.com/amueller/word_cloud.  
+
+The first chunk of code defines the function: grey_color_func, which returns a grey color scheme using the random interval between 60 and 100. This will be used later in the word cloud.  
+
+```{python, echo=TRUE, include=TRUE, eval=FALSE}
+def grey_color_func(word, font_size, position, orientation, random_state=None,
+                    **kwargs):
+    return "hsl(0, 0%%, %d%%)" % random.randint(60, 100)
+```
+
+Next, the code reads in the text file of the movie script from the Star Wars movie, "A New Hope" and names it text.  
+
+```{python, echo=TRUE, include=TRUE, eval=FALSE}
+text = open('a_new_hope.txt').read()
+```
+
+To make the words more consistent, the code changes some of the names so that they will count as the same word.  
+
+```{python, echo=TRUE, include=TRUE, eval=FALSE}
+text = text.replace("HAN", "Han")
+text = text.replace("LUKE'S", "Luke")
+```
+
+We also want to get rid of all stopwords.  
+
+```{python, echo=TRUE, include=TRUE, eval=FALSE}
+stopwords = set(STOPWORDS)
+stopwords.add("int")
+stopwords.add("ext")
+```
+
+Next, the code creates a word cloud of the top 1000 most frequent words in the document.  
+
+```{python, echo=TRUE, include=TRUE, eval=FALSE}
+wc = WordCloud(max_words=1000, mask=mask, stopwords=stopwords, margin=10,
+               random_state=1).generate(text)
+```
+
+The last pieces of code create a nice layout and color scheme for two different word clouds using the stormtrooper mask as a template.  
+
+```{python, echo=TRUE, include=TRUE, eval=FALSE}
+default_colors = wc.to_array()
+plt.title("Custom colors")
+plt.imshow(wc.recolor(color_func=grey_color_func, random_state=3),
+           interpolation="bilinear")
+wc.to_file("a_new_hope.png")
+plt.axis("off")
+plt.figure()
+plt.title("Default colors")
+plt.imshow(default_colors, interpolation="bilinear")
+plt.axis("off")
+plt.show()
+```
+
+Finally, the word clouds of the stormtrooper mask using the frequency of words from the movie script are shown below. I like the colors of the mask with the default colors, but the grey scale image makes the mask look more like a stormtrooper mask, and more words are visible since they aren't in such a dark color.  
+
+```{r, echo=FALSE}
+knitr::include_graphics("Stormtrooper_bw.png")
+knitr::include_graphics("Stormtrooper_color.png")
+```
+
